@@ -86,10 +86,9 @@ jobs:
 
               buildTypes {
                   release {
-                      isMinifyEnabled = true
-                      isShrinkResources = true
+                      isMinifyEnabled = false
+                      isShrinkResources = false
                       signingConfig  = signingConfigs.getByName("release")
-                      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
                   }
               }
 
@@ -132,23 +131,6 @@ jobs:
           org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m -XX:+UseParallelGC
           kotlin.code.style=official
           android.suppressUnsupportedCompileSdk=36
-          EOF
-
-          cat > app/proguard-rules.pro << 'EOF'
-          -keep class androidx.compose.** { *; }
-          -keepclassmembers class * {
-              @androidx.compose.runtime.Composable <methods>;
-          }
-          -keep class kotlin.** { *; }
-          -keepclassmembers class kotlin.Metadata {
-              public <methods>;
-          }
-          -keep class android.webkit.** { *; }
-          -optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
-          -optimizationpasses 5
-          -dontusemixedcaseclassnames
-          -dontskipnonpubliclibraryclasses
-          -verbose
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
@@ -224,12 +206,10 @@ jobs:
               img = Image.new('RGBA', (size, size), BG)
               d   = ImageDraw.Draw(img)
 
-              # Try to use a built-in font, fallback to default
               text = "ACP"
               font_size = int(size * 0.45)
               
               try:
-                  # Try common Linux font paths
                   font_paths = [
                       "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
                       "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
@@ -246,7 +226,6 @@ jobs:
               except:
                   font = ImageFont.load_default()
 
-              # Center the text
               bbox = d.textbbox((0, 0), text, font=font)
               text_w = bbox[2] - bbox[0]
               text_h = bbox[3] - bbox[1]
@@ -273,16 +252,15 @@ jobs:
           gradle wrapper --gradle-version=8.11.1 --distribution-type=bin
           chmod +x gradlew
 
-      - name: Build signed release APK
+      - name: Build release APK
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Verify APK signing
+      - name: Verify APK
         run: |
           APK_PATH="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
           if [ -f "$APK_PATH" ]; then
               echo "✅ Release APK generated"
               echo "📦 APK size: $(ls -lh "$APK_PATH" | awk '{print $5}')"
-              $ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs "$APK_PATH"
           else
               echo "❌ Release APK not found"
               exit 1
@@ -301,9 +279,8 @@ jobs:
           Build:      #${{ github.run_number }}
           Commit:     ${{ github.sha }}
           Timestamp:  $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          Signed:     Yes (dummy keys)
           APK Size:   $APK_SIZE
-          Optimized:  Yes (R8 + resource shrinking)
+          Minified:   No
           EOF
 
       - name: Upload artifact
