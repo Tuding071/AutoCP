@@ -41,6 +41,7 @@ fun AutoCPScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF1E1E1E))
+            .imePadding() // push content above keyboard
             .systemBarsPadding()
     ) {
         // Header
