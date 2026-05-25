@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -39,14 +40,13 @@ class MainActivity : ComponentActivity() {
 }
 
 data class PartInfo(
-    val name: String,           // e.g. "1", "5-A", "100-B"
-    val startIndex: Int,        // index of //PART X START
-    val contentStartIndex: Int, // index right after START line
-    val contentEndIndex: Int,   // index right before END line
-    val endIndex: Int           // index after END line
+    val name: String,
+    val startIndex: Int,
+    val contentStartIndex: Int,
+    val contentEndIndex: Int,
+    val endIndex: Int
 )
 
-// Pattern: //PART (number) or //PART (number)-(A to Z)
 private val partStartRegex = Regex("""//PART\s+(\d+)(?:-([A-Z]))?\s+START""")
 private val partEndRegex = Regex("""//PART\s+\d+(?:-[A-Z])?\s+END""")
 
@@ -105,7 +105,8 @@ fun replaceParts(originalCode: String, replacementCode: String): String {
 
 @Composable
 fun AutoCPScreen() {
-    var code by remember { mutableStateOf(TextFieldValue("")) }
+    var codeText by remember { mutableStateOf("") }
+    var selection by remember { mutableStateOf(TextRange.Zero) }
     var showReplaceDialog by remember { mutableStateOf(false) }
     var showPartsGuide by remember { mutableStateOf(false) }
     var replacementText by remember { mutableStateOf("") }
@@ -126,7 +127,6 @@ fun AutoCPScreen() {
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left side: PARTS info button
             TextButton(
                 onClick = { showPartsGuide = true },
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
@@ -140,7 +140,6 @@ fun AutoCPScreen() {
                 )
             }
             
-            // Center: Title
             Text(
                 text = "Auto Copy/Paste",
                 color = Color(0xFFCCCCCC),
@@ -150,13 +149,12 @@ fun AutoCPScreen() {
                 modifier = Modifier.padding(vertical = 4.dp)
             )
             
-            // Right side: Actions
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 TextButton(
                     onClick = {
-                        code = code.copy(selection = TextRange(0, code.text.length))
+                        selection = TextRange(0, codeText.length)
                     },
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
@@ -170,10 +168,10 @@ fun AutoCPScreen() {
                 
                 TextButton(
                     onClick = {
-                        val textToCopy = if (code.selection.length > 0) {
-                            code.text.substring(code.selection.start, code.selection.end)
+                        val textToCopy = if (selection.length > 0) {
+                            codeText.substring(selection.start, selection.end)
                         } else {
-                            code.text
+                            codeText
                         }
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("code", textToCopy)
@@ -207,7 +205,7 @@ fun AutoCPScreen() {
             }
         }
 
-        // Code editor
+        // Code editor - using String directly instead of TextFieldValue for performance
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -217,8 +215,11 @@ fun AutoCPScreen() {
             val horizontalScrollState = rememberScrollState()
 
             BasicTextField(
-                value = code,
-                onValueChange = { code = it },
+                value = TextFieldValue(codeText, selection),
+                onValueChange = { newValue ->
+                    codeText = newValue.text
+                    selection = newValue.selection
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(verticalScrollState)
@@ -266,7 +267,6 @@ fun AutoCPScreen() {
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // What are PARTS?
                     Text(
                         text = "▎What are PARTS?",
                         color = Color(0xFF569CD6),
@@ -282,7 +282,6 @@ fun AutoCPScreen() {
                         lineHeight = 18.sp
                     )
                     
-                    // Main Parts
                     Text(
                         text = "▎Main Parts (0-99)",
                         color = Color(0xFF569CD6),
@@ -305,7 +304,6 @@ fun AutoCPScreen() {
                         lineHeight = 18.sp
                     )
                     
-                    // Sub Parts
                     Text(
                         text = "▎Sub Parts (A-Z)",
                         color = Color(0xFF569CD6),
@@ -328,7 +326,6 @@ fun AutoCPScreen() {
                         lineHeight = 18.sp
                     )
                     
-                    // Example
                     Text(
                         text = "▎Full Example",
                         color = Color(0xFF569CD6),
@@ -344,7 +341,6 @@ fun AutoCPScreen() {
                         lineHeight = 16.sp
                     )
                     
-                    // How to Replace
                     Text(
                         text = "▎How to Replace",
                         color = Color(0xFF569CD6),
@@ -360,7 +356,6 @@ fun AutoCPScreen() {
                         lineHeight = 18.sp
                     )
                     
-                    // Tips
                     Text(
                         text = "▎Tips",
                         color = Color(0xFF569CD6),
@@ -449,8 +444,8 @@ fun AutoCPScreen() {
                 TextButton(
                     onClick = {
                         if (replacementText.isNotBlank()) {
-                            val newCode = replaceParts(code.text, replacementText)
-                            code = TextFieldValue(newCode)
+                            val newCode = replaceParts(codeText, replacementText)
+                            codeText = newCode
                             val partsReplaced = findParts(replacementText).size
                             Toast.makeText(context, "Replaced $partsReplaced part(s)!", Toast.LENGTH_SHORT).show()
                         }
