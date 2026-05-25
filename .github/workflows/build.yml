@@ -149,7 +149,7 @@ jobs:
                       android:name=".MainActivity"
                       android:exported="true"
                       android:configChanges="orientation|screenSize|keyboardHidden"
-                      android:windowSoftInputMode="adjustPan">
+                      android:windowSoftInputMode="adjustResize">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -200,8 +200,8 @@ jobs:
           import os
 
           def make_icon(size):
-              BG    = (128, 128, 128, 255)  # grey background
-              WHITE = (255, 255, 255, 255)  # white text
+              BG    = (128, 128, 128, 255)
+              WHITE = (255, 255, 255, 255)
 
               img = Image.new('RGBA', (size, size), BG)
               d   = ImageDraw.Draw(img)
