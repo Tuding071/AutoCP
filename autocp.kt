@@ -47,32 +47,37 @@ data class PartInfo(
     val endIndex: Int
 )
 
-private val partStartRegex = Regex("""//PART\s+(\d+)(?:-([A-Z]))?\s+START""")
-private val partEndRegex = Regex("""//PART\s+\d+(?:-[A-Z])?\s+END""")
+private val partStartRegex = Regex("""^//PART\s+(\d+)(?:-([A-Z]))?\s+START""", RegexOption.MULTILINE)
+private val partEndRegex = Regex("""^//PART\s+\d+(?:-[A-Z])?\s+END""", RegexOption.MULTILINE)
 
 fun findParts(code: String): List<PartInfo> {
     val parts = mutableListOf<PartInfo>()
     
-    var searchFrom = 0
-    while (searchFrom < code.length) {
-        val startMatch = partStartRegex.find(code, searchFrom) ?: break
-        val endMatch = partEndRegex.find(code, startMatch.range.last + 1) ?: break
-        
+    val startMatches = partStartRegex.findAll(code).toList()
+    val endMatches = partEndRegex.findAll(code).toList()
+    
+    for (startMatch in startMatches) {
         val num = startMatch.groupValues[1]
         val sub = startMatch.groupValues.getOrNull(2)?.takeIf { it.isNotEmpty() }
         val partName = if (sub != null) "$num-$sub" else num
         
-        parts.add(
-            PartInfo(
-                name = partName,
-                startIndex = startMatch.range.first,
-                contentStartIndex = startMatch.range.last + 1,
-                contentEndIndex = endMatch.range.first,
-                endIndex = endMatch.range.last + 1
-            )
-        )
+        // Find matching END (first END after this START with same part name pattern)
+        val endMatch = endMatches.find { 
+            it.range.first > startMatch.range.last && 
+            it.value.contains(Regex("""//PART\s+$num${if (sub != null) "-$sub" else ""}\s+END"""))
+        }
         
-        searchFrom = endMatch.range.last + 1
+        if (endMatch != null) {
+            parts.add(
+                PartInfo(
+                    name = partName,
+                    startIndex = startMatch.range.first,
+                    contentStartIndex = startMatch.range.last + 1,
+                    contentEndIndex = endMatch.range.first,
+                    endIndex = endMatch.range.last + 1
+                )
+            )
+        }
     }
     
     return parts
@@ -105,8 +110,7 @@ fun replaceParts(originalCode: String, replacementCode: String): String {
 
 @Composable
 fun AutoCPScreen() {
-    var codeText by remember { mutableStateOf("") }
-    var selection by remember { mutableStateOf(TextRange.Zero) }
+    var code by remember { mutableStateOf(TextFieldValue("")) }
     var showReplaceDialog by remember { mutableStateOf(false) }
     var showPartsGuide by remember { mutableStateOf(false) }
     var replacementText by remember { mutableStateOf("") }
@@ -154,7 +158,7 @@ fun AutoCPScreen() {
             ) {
                 TextButton(
                     onClick = {
-                        selection = TextRange(0, codeText.length)
+                        code = code.copy(selection = TextRange(0, code.text.length))
                     },
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
@@ -168,10 +172,10 @@ fun AutoCPScreen() {
                 
                 TextButton(
                     onClick = {
-                        val textToCopy = if (selection.length > 0) {
-                            codeText.substring(selection.start, selection.end)
+                        val textToCopy = if (code.selection.length > 0) {
+                            code.text.substring(code.selection.start, code.selection.end)
                         } else {
-                            codeText
+                            code.text
                         }
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("code", textToCopy)
@@ -205,7 +209,7 @@ fun AutoCPScreen() {
             }
         }
 
-        // Code editor - using String directly instead of TextFieldValue for performance
+        // Code editor
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -215,11 +219,8 @@ fun AutoCPScreen() {
             val horizontalScrollState = rememberScrollState()
 
             BasicTextField(
-                value = TextFieldValue(codeText, selection),
-                onValueChange = { newValue ->
-                    codeText = newValue.text
-                    selection = newValue.selection
-                },
+                value = code,
+                onValueChange = { code = it },
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(verticalScrollState)
@@ -290,14 +291,14 @@ fun AutoCPScreen() {
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "//PART 0 START\n//PART 1 START\n//PART 2 START\n...\n//PART 99 START",
+                        text = "//PART 0 START\ncode here...\n//PART 0 END\n\n//PART 1 START\nmore code...\n//PART 1 END",
                         color = Color(0xFF6A9955),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
                     )
                     Text(
-                        text = "Use numbers 0-99 for your main code sections. Example: PART 0 for imports, PART 1 for UI, PART 2 for logic, etc.",
+                        text = "Use numbers 0-99 for your main code sections. Each part is independent and self-contained.",
                         color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -312,14 +313,14 @@ fun AutoCPScreen() {
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "//PART 5-A START\n//PART 5-B START\n...\n//PART 5-Z START",
+                        text = "//PART 5-A START\nsub code block...\n//PART 5-A END\n\n//PART 5-B START\nanother block...\n//PART 5-B END",
                         color = Color(0xFF6A9955),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
                     )
                     Text(
-                        text = "If a part is too long, split it into sub-parts. Add a dash and letter (A-Z) after the part number. Sub parts are independent and can be replaced separately from their parent part.",
+                        text = "Split large parts into sub-parts (A-Z). Sub parts are completely independent - they don't share scope with parent parts. Each sub part is its own complete block.",
                         color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -327,18 +328,18 @@ fun AutoCPScreen() {
                     )
                     
                     Text(
-                        text = "▎Full Example",
+                        text = "▎Important Rules",
                         color = Color(0xFF569CD6),
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "//PART 0 START\npackage com.example\nimport androidx...\n//PART 0 END\n\n//PART 1 START\n@Composable\nfun MyScreen() {\n    //PART 1-A START\n    Column {\n        Text(\"Hello\")\n    }\n    //PART 1-A END\n    \n    //PART 1-B START\n    Button(onClick = {})\n    //PART 1-B END\n}\n//PART 1 END",
-                        color = Color(0xFF6A9955),
+                        text = "• PART markers must start at column 0 (no indentation)\n• Each part is independent - no shared braces/scopes\n• Sub parts don't need parent part closing braces\n• Replace only affects the parts you specify\n• Unspecified parts stay exactly as they are",
+                        color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
                     )
                     
                     Text(
@@ -349,22 +350,7 @@ fun AutoCPScreen() {
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "1. Tap 'Replace' button\n2. Paste replacement code with PART markers\n3. Only the parts you include will be replaced\n4. Other parts stay unchanged\n\nExample replacement:\n//PART 1 START\nnew UI code here\n//PART 1 END\n//PART 3-C START\nupdated sub part\n//PART 3-C END",
-                        color = Color(0xFFCCCCCC),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp
-                    )
-                    
-                    Text(
-                        text = "▎Tips",
-                        color = Color(0xFF569CD6),
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                    Text(
-                        text = "• PART names must match exactly (case sensitive)\n• Sub parts use capital letters A-Z only\n• You can replace main parts and sub parts in one paste\n• The Replace feature auto-detects which parts to update\n• Empty replacement = empty part content",
+                        text = "1. Tap 'Replace' button\n2. Paste replacement code with PART markers\n3. Only the parts you include will be replaced\n4. Other parts stay unchanged\n\nExample:\n//PART 2 START\nnew code\n//PART 2 END\n//PART 5-B START\nupdated block\n//PART 5-B END",
                         color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -426,7 +412,7 @@ fun AutoCPScreen() {
                         ),
                         placeholder = {
                             Text(
-                                "//PART 1 START\ncodes...\n//PART 1 END\n\n//PART 5-B START\nmore codes...\n//PART 5-B END",
+                                "//PART 1 START\nreplacement codes...\n//PART 1 END\n\n//PART 5-B START\nmore codes...\n//PART 5-B END",
                                 color = Color(0xFF666666),
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 14.sp
@@ -444,8 +430,8 @@ fun AutoCPScreen() {
                 TextButton(
                     onClick = {
                         if (replacementText.isNotBlank()) {
-                            val newCode = replaceParts(codeText, replacementText)
-                            codeText = newCode
+                            val newCode = replaceParts(code.text, replacementText)
+                            code = TextFieldValue(newCode)
                             val partsReplaced = findParts(replacementText).size
                             Toast.makeText(context, "Replaced $partsReplaced part(s)!", Toast.LENGTH_SHORT).show()
                         }
