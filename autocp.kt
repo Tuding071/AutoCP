@@ -40,15 +40,15 @@ class MainActivity : ComponentActivity() {
 }
 
 data class PartInfo(
-    val name: String,
+    val name: String,           // e.g. "1", "1.1", "5.3"
     val startIndex: Int,
     val contentStartIndex: Int,
     val contentEndIndex: Int,
     val endIndex: Int
 )
 
-private val partStartRegex = Regex("""^//PART\s+(\d+)(?:-([A-Z]))?\s+START""", RegexOption.MULTILINE)
-private val partEndRegex = Regex("""^//PART\s+\d+(?:-[A-Z])?\s+END""", RegexOption.MULTILINE)
+private val partStartRegex = Regex("""^//PART\s+(\d+(?:\.\d+)?)\s+START""", RegexOption.MULTILINE)
+private val partEndRegex = Regex("""^//PART\s+\d+(?:\.\d+)?\s+END""", RegexOption.MULTILINE)
 
 fun findParts(code: String): List<PartInfo> {
     val parts = mutableListOf<PartInfo>()
@@ -57,14 +57,11 @@ fun findParts(code: String): List<PartInfo> {
     val endMatches = partEndRegex.findAll(code).toList()
     
     for (startMatch in startMatches) {
-        val num = startMatch.groupValues[1]
-        val sub = startMatch.groupValues.getOrNull(2)?.takeIf { it.isNotEmpty() }
-        val partName = if (sub != null) "$num-$sub" else num
+        val partName = startMatch.groupValues[1]
         
-        // Find matching END (first END after this START with same part name pattern)
         val endMatch = endMatches.find { 
             it.range.first > startMatch.range.last && 
-            it.value.contains(Regex("""//PART\s+$num${if (sub != null) "-$sub" else ""}\s+END"""))
+            it.value.contains(Regex("""//PART\s+${Regex.escape(partName)}\s+END"""))
         }
         
         if (endMatch != null) {
@@ -276,7 +273,7 @@ fun AutoCPScreen() {
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "PARTS let you organize your code into replaceable blocks. Each part is wrapped with START/END markers so you can quickly swap out sections without touching the rest of your code.",
+                        text = "PARTS let you organize your code into replaceable blocks. Each part is wrapped with START/END markers. All parts are flat and independent - no nesting.",
                         color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -284,21 +281,29 @@ fun AutoCPScreen() {
                     )
                     
                     Text(
-                        text = "▎Main Parts (0-99)",
+                        text = "▎Part Format",
                         color = Color(0xFF569CD6),
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "//PART 0 START\ncode here...\n//PART 0 END\n\n//PART 1 START\nmore code...\n//PART 1 END",
+                        text = "//PART 0 START\ncode here...\n//PART 0 END\n\n//PART 1 START\nmore code...\n//PART 1 END\n\n//PART 1.1 START\nsub part...\n//PART 1.1 END\n\n//PART 1.2 START\nanother sub...\n//PART 1.2 END\n\n//PART 2 START\neven more...\n//PART 2 END",
                         color = Color(0xFF6A9955),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
                     )
+                    
                     Text(
-                        text = "Use numbers 0-99 for your main code sections. Each part is independent and self-contained.",
+                        text = "▎Part Numbers",
+                        color = Color(0xFF569CD6),
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                    Text(
+                        text = "• Main parts: 0, 1, 2, 3 ... up to 99\n• Sub parts: 1.1, 1.2, 5.1, 5.2 ... (group.sub)\n• All parts are independent flat blocks\n• No nesting needed - each part is self-contained\n• Sub parts are just for organizing related code\n• Dot notation is purely for grouping (1.1 means group 1, sub 1)",
                         color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -306,36 +311,14 @@ fun AutoCPScreen() {
                     )
                     
                     Text(
-                        text = "▎Sub Parts (A-Z)",
+                        text = "▎Rules",
                         color = Color(0xFF569CD6),
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "//PART 5-A START\nsub code block...\n//PART 5-A END\n\n//PART 5-B START\nanother block...\n//PART 5-B END",
-                        color = Color(0xFF6A9955),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp
-                    )
-                    Text(
-                        text = "Split large parts into sub-parts (A-Z). Sub parts are completely independent - they don't share scope with parent parts. Each sub part is its own complete block.",
-                        color = Color(0xFFCCCCCC),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp
-                    )
-                    
-                    Text(
-                        text = "▎Important Rules",
-                        color = Color(0xFF569CD6),
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                    Text(
-                        text = "• PART markers must start at column 0 (no indentation)\n• Each part is independent - no shared braces/scopes\n• Sub parts don't need parent part closing braces\n• Replace only affects the parts you specify\n• Unspecified parts stay exactly as they are",
+                        text = "• PART markers must start at column 0 (no indentation)\n• Each part is a complete, independent block\n• No shared braces or scopes between parts\n• Replace only affects the parts you specify\n• Unspecified parts stay exactly as they are\n• Parts don't need to be in order",
                         color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -350,7 +333,7 @@ fun AutoCPScreen() {
                         fontSize = 15.sp
                     )
                     Text(
-                        text = "1. Tap 'Replace' button\n2. Paste replacement code with PART markers\n3. Only the parts you include will be replaced\n4. Other parts stay unchanged\n\nExample:\n//PART 2 START\nnew code\n//PART 2 END\n//PART 5-B START\nupdated block\n//PART 5-B END",
+                        text = "1. Tap 'Replace' button\n2. Paste replacement code with PART markers\n3. Only the parts you include will be replaced\n4. Other parts stay unchanged\n\nExample:\n//PART 1 START\nnew code for part 1\n//PART 1 END\n\n//PART 2.3 START\nupdated sub part\n//PART 2.3 END",
                         color = Color(0xFFCCCCCC),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -412,7 +395,7 @@ fun AutoCPScreen() {
                         ),
                         placeholder = {
                             Text(
-                                "//PART 1 START\nreplacement codes...\n//PART 1 END\n\n//PART 5-B START\nmore codes...\n//PART 5-B END",
+                                "//PART 1 START\nreplacement codes...\n//PART 1 END\n\n//PART 2.3 START\nmore codes...\n//PART 2.3 END",
                                 color = Color(0xFF666666),
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 14.sp
