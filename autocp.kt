@@ -336,10 +336,11 @@ fun AutoCPScreen() {
                     setPadding(32, 32, 32, 32)
 
                     // Scroll behaviour
-                    // Lines won't wrap; EditText scrolls horizontally to follow cursor.
-                    // ScrollView parent handles vertical scrolling.
-                    setHorizontallyScrolling(true)
-                    isSingleLine = false    // keep multi-line editing
+                    // isSingleLine = false must come FIRST — internally it calls
+                    // setHorizontallyScrolling(false), which would override our setting.
+                    // Setting it before lets setHorizontallyScrolling(true) win.
+                    isSingleLine = false                // multi-line editing
+                    setHorizontallyScrolling(true)      // no wrap; lines extend horizontally
 
                     // Scrollbars: horizontal on the EditText, vertical on the ScrollView
                     isHorizontalScrollBarEnabled = true
