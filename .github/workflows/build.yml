@@ -32,6 +32,7 @@ jobs:
           PKG=app/src/main/java/com/autocp/app
           mkdir -p $PKG
           mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/layout
           mkdir -p gradle/wrapper
 
           cp autocp.kt $PKG/
@@ -50,9 +51,8 @@ jobs:
 
           cat > build.gradle.kts << 'EOF'
           plugins {
-              id("com.android.application")             version "8.9.1" apply false
-              id("org.jetbrains.kotlin.android")        version "2.2.0" apply false
-              id("org.jetbrains.kotlin.plugin.compose") version "2.2.0" apply false
+              id("com.android.application")      version "8.9.1" apply false
+              id("org.jetbrains.kotlin.android") version "2.2.0" apply false
           }
           EOF
 
@@ -60,7 +60,6 @@ jobs:
           plugins {
               id("com.android.application")
               id("org.jetbrains.kotlin.android")
-              id("org.jetbrains.kotlin.plugin.compose")
           }
 
           android {
@@ -86,9 +85,9 @@ jobs:
 
               buildTypes {
                   release {
-                      isMinifyEnabled = false
+                      isMinifyEnabled   = false
                       isShrinkResources = false
-                      signingConfig  = signingConfigs.getByName("release")
+                      signingConfig     = signingConfigs.getByName("release")
                   }
               }
 
@@ -97,7 +96,8 @@ jobs:
                   targetCompatibility = JavaVersion.VERSION_17
               }
               kotlinOptions { jvmTarget = "17" }
-              buildFeatures { compose = true }
+
+              buildFeatures { viewBinding = true }
 
               splits {
                   abi {
@@ -111,17 +111,8 @@ jobs:
 
           dependencies {
               implementation("androidx.core:core-ktx:1.15.0")
-              implementation("androidx.activity:activity-compose:1.10.1")
-              implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
-
-              val bom = platform("androidx.compose:compose-bom:2025.05.00")
-              implementation(bom)
-              implementation("androidx.compose.ui:ui")
-              implementation("androidx.compose.ui:ui-graphics")
-              implementation("androidx.compose.foundation:foundation")
-              implementation("androidx.compose.material3:material3")
-              implementation("androidx.compose.material:material-icons-extended")
-              implementation("androidx.compose.animation:animation")
+              implementation("androidx.appcompat:appcompat:1.7.0")
+              implementation("com.google.android.material:material:1.12.0")
           }
           EOF
 
@@ -149,7 +140,7 @@ jobs:
                       android:name=".MainActivity"
                       android:exported="true"
                       android:configChanges="orientation|screenSize|keyboardHidden"
-                      android:windowSoftInputMode="adjustNothing">
+                      android:windowSoftInputMode="adjustResize">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -159,18 +150,165 @@ jobs:
           </manifest>
           EOF
 
+          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout
+              xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:background="#1E1E1E"
+              android:fitsSystemWindows="true">
+
+              <!-- Header bar -->
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:background="#2D2D2D"
+                  android:orientation="horizontal"
+                  android:gravity="center_vertical"
+                  android:paddingStart="4dp"
+                  android:paddingEnd="4dp"
+                  android:paddingTop="2dp"
+                  android:paddingBottom="2dp">
+
+                  <Button
+                      android:id="@+id/btnParts"
+                      style="?attr/borderlessButtonStyle"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="PARTS"
+                      android:textColor="#569CD6"
+                      android:fontFamily="monospace"
+                      android:textSize="13sp"
+                      android:textStyle="bold"
+                      android:minWidth="0dp"
+                      android:paddingStart="8dp"
+                      android:paddingEnd="8dp" />
+
+                  <TextView
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_weight="1"
+                      android:text="Auto Copy/Paste"
+                      android:textColor="#CCCCCC"
+                      android:fontFamily="monospace"
+                      android:textSize="15sp"
+                      android:textStyle="bold"
+                      android:gravity="center" />
+
+                  <Button
+                      android:id="@+id/btnSelectAll"
+                      style="?attr/borderlessButtonStyle"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="All"
+                      android:textColor="#CCCCCC"
+                      android:fontFamily="monospace"
+                      android:textSize="13sp"
+                      android:minWidth="0dp"
+                      android:paddingStart="8dp"
+                      android:paddingEnd="8dp" />
+
+                  <Button
+                      android:id="@+id/btnCopy"
+                      style="?attr/borderlessButtonStyle"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="Copy"
+                      android:textColor="#CCCCCC"
+                      android:fontFamily="monospace"
+                      android:textSize="13sp"
+                      android:minWidth="0dp"
+                      android:paddingStart="8dp"
+                      android:paddingEnd="8dp" />
+
+                  <Button
+                      android:id="@+id/btnReplace"
+                      style="?attr/borderlessButtonStyle"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="Replace"
+                      android:textColor="#CCCCCC"
+                      android:fontFamily="monospace"
+                      android:textSize="13sp"
+                      android:minWidth="0dp"
+                      android:paddingStart="8dp"
+                      android:paddingEnd="8dp" />
+
+              </LinearLayout>
+
+              <!-- Code editor: ScrollView (vertical) > HorizontalScrollView > EditText -->
+              <ScrollView
+                  android:id="@+id/scrollView"
+                  android:layout_width="match_parent"
+                  android:layout_height="0dp"
+                  android:layout_weight="1"
+                  android:background="#1E1E1E"
+                  android:scrollbars="vertical">
+
+                  <HorizontalScrollView
+                      android:id="@+id/horizontalScrollView"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:scrollbars="horizontal"
+                      android:fillViewport="false">
+
+                      <EditText
+                          android:id="@+id/editCode"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:background="@null"
+                          android:textColor="#FFFFFF"
+                          android:textColorHint="#555555"
+                          android:hint="Paste your code here..."
+                          android:fontFamily="monospace"
+                          android:textSize="14sp"
+                          android:lineSpacingExtra="2sp"
+                          android:gravity="top|start"
+                          android:inputType="textMultiLine|textNoSuggestions"
+                          android:imeOptions="flagNoExtractUi"
+                          android:includeFontPadding="false"
+                          android:minLines="30"
+                          android:padding="12dp"
+                          android:scrollbars="none" />
+
+                  </HorizontalScrollView>
+
+              </ScrollView>
+
+          </LinearLayout>
+          EOF
+
           cat > app/src/main/res/values/strings.xml << 'EOF'
           <resources><string name="app_name">AutoCP</string></resources>
           EOF
 
           cat > app/src/main/res/values/themes.xml << 'EOF'
           <resources>
-              <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
-                  <item name="android:windowBackground">#808080</item>
-                  <item name="android:statusBarColor">#808080</item>
-                  <item name="android:navigationBarColor">#808080</item>
+
+              <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
+                  <item name="android:windowBackground">#1E1E1E</item>
+                  <item name="android:statusBarColor">#1E1E1E</item>
+                  <item name="android:navigationBarColor">#1E1E1E</item>
                   <item name="android:windowLightStatusBar">false</item>
+                  <item name="colorPrimary">#569CD6</item>
+                  <item name="colorPrimaryVariant">#2D2D2D</item>
+                  <item name="colorOnPrimary">#FFFFFF</item>
+                  <item name="colorSurface">#2D2D2D</item>
+                  <item name="colorOnSurface">#FFFFFF</item>
+                  <item name="android:colorBackground">#1E1E1E</item>
               </style>
+
+              <!-- Dark theme overlay for MaterialAlertDialogBuilder -->
+              <style name="DarkAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+                  <item name="colorSurface">#2D2D2D</item>
+                  <item name="colorOnSurface">#FFFFFF</item>
+                  <item name="colorPrimary">#4CAF50</item>
+                  <item name="android:textColorPrimary">#FFFFFF</item>
+                  <item name="android:textColorSecondary">#AAAAAA</item>
+              </style>
+
           </resources>
           EOF
 
@@ -202,13 +340,10 @@ jobs:
           def make_icon(size):
               BG    = (128, 128, 128, 255)
               WHITE = (255, 255, 255, 255)
-
-              img = Image.new('RGBA', (size, size), BG)
-              d   = ImageDraw.Draw(img)
-
-              text = "ACP"
+              img   = Image.new('RGBA', (size, size), BG)
+              d     = ImageDraw.Draw(img)
+              text  = "ACP"
               font_size = int(size * 0.45)
-              
               try:
                   font_paths = [
                       "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -225,15 +360,12 @@ jobs:
                       font = ImageFont.load_default()
               except:
                   font = ImageFont.load_default()
-
-              bbox = d.textbbox((0, 0), text, font=font)
+              bbox   = d.textbbox((0, 0), text, font=font)
               text_w = bbox[2] - bbox[0]
               text_h = bbox[3] - bbox[1]
               x = (size - text_w) / 2 - bbox[0]
               y = (size - text_h) / 2 - bbox[1]
-              
               d.text((x, y), text, fill=WHITE, font=font)
-
               return img
 
           sizes = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
@@ -243,7 +375,6 @@ jobs:
               icon = make_icon(s)
               icon.save(f'{path}/ic_launcher.png')
               icon.save(f'{path}/ic_launcher_round.png')
-
           print("Icons done.")
           PYEOF
 
