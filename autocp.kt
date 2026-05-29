@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -245,7 +246,7 @@ fun AutoCPScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF1E1E1E))
-            .systemBarsPadding()  // Full screen but not immersive
+            .systemBarsPadding()
     ) {
 
         // ── Header ────────────────────────────────────────────────────────
@@ -253,41 +254,77 @@ fun AutoCPScreen() {
             color = Color(0xFF2D2D2D),
             shadowElevation = 4.dp
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Left side
-                TextButton(
-                    onClick = { showPartsGuide = true },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        "PARTS",
-                        color      = Color(0xFF569CD6),
-                        fontSize   = 13.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Center
+                // Title - centered
                 Text(
-                    text       = "Auto Copy/Paste",
-                    color      = Color(0xFFCCCCCC),
-                    fontSize   = 16.sp,
+                    text = "Auto Copy/Paste",
+                    color = Color(0xFFCCCCCC),
+                    fontSize = 18.sp,
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp, bottom = 4.dp)
                 )
-
-                // Right side
+                
+                // Buttons row
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    TextButton(
+                        onClick = { showPartsGuide = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "Parts?",
+                            color = Color(0xFF569CD6),
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    
+                    TextButton(
+                        onClick = {
+                            editTextRef.value?.setText("")
+                            Toast.makeText(context, "Cleared!", Toast.LENGTH_SHORT).show()
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "Delete",
+                            color = Color(0xFFFF6B6B),
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    
+                    TextButton(
+                        onClick = { editTextRef.value?.selectAll() },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "Select All",
+                            color = Color(0xFFCCCCCC),
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    
                     TextButton(
                         onClick = {
                             editTextRef.value?.let { et ->
@@ -303,40 +340,55 @@ fun AutoCPScreen() {
                                 Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text("Copy", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                        Text(
+                            "Copy",
+                            color = Color(0xFFCCCCCC),
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center
+                        )
                     }
-
+                    
                     TextButton(
                         onClick = {
                             pasteFromClipboard(context) { pastedText ->
                                 editTextRef.value?.setText(pastedText)
                             }
                         },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text("Paste", color = Color(0xFF4CAF50), fontSize = 13.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Paste",
+                            color = Color(0xFF4CAF50),
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
                     }
-
+                    
                     TextButton(
                         onClick = { replacementText = ""; showReplaceDialog = true },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text("Replace", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-                    }
-
-                    TextButton(
-                        onClick = { editTextRef.value?.selectAll() },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text("Select All", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                        Text(
+                            "Replace",
+                            color = Color(0xFFCCCCCC),
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
         }
 
-        // ── Native code editor (read-only preview, full screen) ──────────
+        // ── Native code editor (read-only but with proper text display) ──
         AndroidView(
             factory = { ctx ->
                 val handler             = Handler(Looper.getMainLooper())
@@ -354,14 +406,16 @@ fun AutoCPScreen() {
                     gravity  = Gravity.TOP or Gravity.START
                     setPadding(32, 32, 32, 32)
 
-                    // ── Make it read-only (preview only) ─────────────────
-                    isFocusable = false
-                    isFocusableInTouchMode = false
+                    // ── Keep it editable for proper text formatting but disable keyboard ──
+                    isFocusable = true
+                    isFocusableInTouchMode = true
                     isClickable = true
                     isLongClickable = true
-                    showSoftInputOnFocus = false
-                    inputType = 0 // No keyboard
-
+                    showSoftInputOnFocus = false  // This prevents keyboard
+                    
+                    // Disable text input but allow programmatic changes
+                    keyListener = null  // This prevents keyboard input
+                    
                     // ── Size ────────────────────────────────────────────────
                     minWidth = screenWidth
                     minLines = 30
@@ -449,7 +503,7 @@ fun AutoCPScreen() {
                             "PARTS System Guide",
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            fontSize   = 18.sp,
+                            fontSize = 18.sp,
                             color = Color.White
                         )
                         
