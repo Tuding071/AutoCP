@@ -214,6 +214,22 @@ fun applySpans(editable: Editable, spans: List<SpanInfo>) {
 }
 
 // ─────────────────────────────────────────────
+// Helper function to paste from clipboard
+// ─────────────────────────────────────────────
+
+private fun pasteFromClipboard(context: Context, onPasted: (String) -> Unit) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip = clipboard.primaryClip
+    if (clip != null && clip.itemCount > 0) {
+        val pastedText = clip.getItemAt(0).text.toString()
+        onPasted(pastedText)
+        Toast.makeText(context, "Pasted!", Toast.LENGTH_SHORT).show()
+    } else {
+        Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+    }
+}
+
+// ─────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────
 
@@ -224,198 +240,185 @@ fun AutoCPScreen() {
     var showReplaceDialog by remember { mutableStateOf(false) }
     var showPartsGuide    by remember { mutableStateOf(false) }
     var replacementText   by remember { mutableStateOf("") }
-    var codeContent       by remember { mutableStateOf("") }
 
-    // Main content with padding to make it non-fullscreen
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A1A))
-            .padding(16.dp), // Add padding around the entire app for non-fullscreen look
-        contentAlignment = Alignment.Center
+            .background(Color(0xFF1E1E1E))
+            .systemBarsPadding()  // Full screen but not immersive
     ) {
+
+        // ── Header ────────────────────────────────────────────────────────
         Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.9f),
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF1E1E1E),
-            shadowElevation = 8.dp
+            color = Color(0xFF2D2D2D),
+            shadowElevation = 4.dp
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // ── Header ────────────────────────────────────────────────────────
-                Surface(
-                    color = Color(0xFF2D2D2D),
-                    shadowElevation = 4.dp
+                // Left side
+                TextButton(
+                    onClick = { showPartsGuide = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        TextButton(
-                            onClick = { showPartsGuide = true },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                "PARTS",
-                                color      = Color(0xFF569CD6),
-                                fontSize   = 13.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Text(
-                            text       = "Auto Copy/Paste",
-                            color      = Color(0xFFCCCCCC),
-                            fontSize   = 16.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            modifier   = Modifier.padding(vertical = 4.dp)
-                        )
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            TextButton(
-                                onClick = { editTextRef.value?.selectAll() },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("Select All", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-                            }
-
-                            TextButton(
-                                onClick = {
-                                    val et = editTextRef.value ?: return@TextButton
-                                    val selStart = et.selectionStart
-                                    val selEnd   = et.selectionEnd
-                                    val textToCopy = if (selEnd > selStart) {
-                                        et.text.substring(selStart, selEnd)
-                                    } else {
-                                        et.text.toString()
-                                    }
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    clipboard.setPrimaryClip(ClipData.newPlainText("code", textToCopy))
-                                    Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
-                                },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("Copy", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-                            }
-
-                            TextButton(
-                                onClick = { replacementText = ""; showReplaceDialog = true },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("Replace", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-                            }
-
-                            TextButton(
-                                onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = clipboard.primaryClip
-                                    if (clip != null && clip.itemCount > 0) {
-                                        val pastedText = clip.getItemAt(0).text.toString()
-                                        codeContent = pastedText
-                                        editTextRef.value?.setText(pastedText)
-                                        Toast.makeText(context, "Pasted!", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("Paste", color = Color(0xFF4CAF50), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-                            }
-                        }
-                    }
+                    Text(
+                        "PARTS",
+                        color      = Color(0xFF569CD6),
+                        fontSize   = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
-                // ── Native code preview (read-only) ────────────────────────────
-                AndroidView(
-                    factory = { ctx ->
-                        val handler             = Handler(Looper.getMainLooper())
-                        var highlightRunnable: Runnable? = null
-
-                        val editText = EditText(ctx).apply {
-                            // ── Appearance ─────────────────────────────────────────
-                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                            setTextColor(android.graphics.Color.WHITE)
-                            setHintTextColor(0xFF555555.toInt())
-                            hint     = "Tap 'Paste' to paste code from clipboard..."
-                            typeface = Typeface.MONOSPACE
-                            textSize = 14f
-                            gravity  = Gravity.TOP or Gravity.START
-                            setPadding(32, 32, 32, 32)
-
-                            // ── Make it read-only (preview only) ─────────────────
-                            isFocusable = false
-                            isFocusableInTouchMode = false
-                            isClickable = true
-                            isLongClickable = true
-                            showSoftInputOnFocus = false
-                            inputType = 0 // No keyboard
-
-                            // ── Size ────────────────────────────────────────────────
-                            minLines = 25
-                            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-
-                            // ── Scroll bars ─────────────────────────────────────────
-                            isHorizontalScrollBarEnabled = false
-                            isVerticalScrollBarEnabled   = false
-
-                            // ── Syntax highlighting ──────────────────────────────
-                            addTextChangedListener(object : TextWatcher {
-                                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                                override fun afterTextChanged(s: Editable?) {
-                                    highlightRunnable?.let { handler.removeCallbacks(it) }
-                                    val r = Runnable {
-                                        val snapshot = text?.toString() ?: return@Runnable
-                                        Thread {
-                                            val spans = computeSpans(snapshot)
-                                            handler.post {
-                                                val editable = text ?: return@post
-                                                if (editable.length == snapshot.length) {
-                                                    applySpans(editable, spans)
-                                                }
-                                            }
-                                        }.start()
-                                    }
-                                    highlightRunnable = r
-                                    handler.postDelayed(r, 500L)
-                                }
-                            })
-
-                            editTextRef.value = this
-                        }
-
-                        // HorizontalScrollView — handles left/right swiping
-                        val hsv = HorizontalScrollView(ctx).apply {
-                            isHorizontalScrollBarEnabled = true
-                            isVerticalScrollBarEnabled   = false
-                            isFillViewport               = false
-                            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-                            addView(editText)
-                        }
-
-                        // ScrollView — handles up/down swiping
-                        ScrollView(ctx).apply {
-                            isVerticalScrollBarEnabled   = true
-                            isHorizontalScrollBarEnabled = false
-                            isFillViewport               = false
-                            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-                            addView(hsv)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
+                // Center
+                Text(
+                    text       = "Auto Copy/Paste",
+                    color      = Color(0xFFCCCCCC),
+                    fontSize   = 16.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
                 )
+
+                // Right side
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            editTextRef.value?.let { et ->
+                                val selStart = et.selectionStart
+                                val selEnd   = et.selectionEnd
+                                val textToCopy = if (selEnd > selStart) {
+                                    et.text.substring(selStart, selEnd)
+                                } else {
+                                    et.text.toString()
+                                }
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("code", textToCopy))
+                                Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Copy", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                    }
+
+                    TextButton(
+                        onClick = {
+                            pasteFromClipboard(context) { pastedText ->
+                                editTextRef.value?.setText(pastedText)
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Paste", color = Color(0xFF4CAF50), fontSize = 13.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                    }
+
+                    TextButton(
+                        onClick = { replacementText = ""; showReplaceDialog = true },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Replace", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                    }
+
+                    TextButton(
+                        onClick = { editTextRef.value?.selectAll() },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Select All", color = Color(0xFFCCCCCC), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                    }
+                }
             }
         }
+
+        // ── Native code editor (read-only preview, full screen) ──────────
+        AndroidView(
+            factory = { ctx ->
+                val handler             = Handler(Looper.getMainLooper())
+                var highlightRunnable: Runnable? = null
+                val screenWidth         = ctx.resources.displayMetrics.widthPixels
+
+                val editText = EditText(ctx).apply {
+                    // ── Appearance ─────────────────────────────────────────
+                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    setTextColor(android.graphics.Color.WHITE)
+                    setHintTextColor(0xFF555555.toInt())
+                    hint     = "Tap 'Paste' to paste code from clipboard..."
+                    typeface = Typeface.MONOSPACE
+                    textSize = 14f
+                    gravity  = Gravity.TOP or Gravity.START
+                    setPadding(32, 32, 32, 32)
+
+                    // ── Make it read-only (preview only) ─────────────────
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    isClickable = true
+                    isLongClickable = true
+                    showSoftInputOnFocus = false
+                    inputType = 0 // No keyboard
+
+                    // ── Size ────────────────────────────────────────────────
+                    minWidth = screenWidth
+                    minLines = 30
+                    layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+
+                    // ── Scroll bars ─────────────────────────────────────────
+                    isHorizontalScrollBarEnabled = false
+                    isVerticalScrollBarEnabled   = false
+
+                    // ── Syntax highlighting ──────────────────────────────
+                    addTextChangedListener(object : TextWatcher {
+                        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                        override fun afterTextChanged(s: Editable?) {
+                            highlightRunnable?.let { handler.removeCallbacks(it) }
+                            val r = Runnable {
+                                val snapshot = text?.toString() ?: return@Runnable
+                                Thread {
+                                    val spans = computeSpans(snapshot)
+                                    handler.post {
+                                        val editable = text ?: return@post
+                                        if (editable.length == snapshot.length) {
+                                            applySpans(editable, spans)
+                                        }
+                                    }
+                                }.start()
+                            }
+                            highlightRunnable = r
+                            handler.postDelayed(r, 500L)
+                        }
+                    })
+
+                    editTextRef.value = this
+                }
+
+                // HorizontalScrollView — handles left/right swiping
+                val hsv = HorizontalScrollView(ctx).apply {
+                    isHorizontalScrollBarEnabled = true
+                    isVerticalScrollBarEnabled   = false
+                    isFillViewport               = false
+                    layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                    addView(editText)
+                }
+
+                // ScrollView — handles up/down swiping
+                ScrollView(ctx).apply {
+                    isVerticalScrollBarEnabled   = true
+                    isHorizontalScrollBarEnabled = false
+                    isFillViewport               = false
+                    layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+                    addView(hsv)
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        )
     }
 
     // ── PARTS Guide Dialog ────────────────────────────────────────────────────
@@ -426,27 +429,94 @@ fun AutoCPScreen() {
         ) {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.8f),
-                shape = RoundedCornerShape(12.dp),
+                    .fillMaxWidth(0.95f)
+                    .fillMaxHeight(0.85f),
+                shape = RoundedCornerShape(16.dp),
                 color = Color(0xFF2D2D2D)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        "PARTS System Guide",
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize   = 18.sp,
-                        color = Color.White,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    // Dialog header with Copy button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "PARTS System Guide",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 18.sp,
+                            color = Color.White
+                        )
+                        
+                        TextButton(
+                            onClick = {
+                                val guideText = """
+                                    PARTS System Guide
+                                    
+                                    What are PARTS?
+                                    PARTS let you organize your code into replaceable blocks. Each part is wrapped with START/END markers. All parts are flat and independent - no nesting.
+                                    
+                                    Part Format:
+                                    //PART 0 START
+                                    code here...
+                                    //PART 0 END
+                                    
+                                    //PART 1 START
+                                    more code...
+                                    //PART 1 END
+                                    
+                                    //PART 1.1 START
+                                    sub part...
+                                    //PART 1.1 END
+                                    
+                                    Part Numbers:
+                                    • Main parts: 0, 1, 2, 3 ... up to 99
+                                    • Sub parts: 1.1, 1.2, 5.1, 5.2 ... (group.sub)
+                                    • All parts are independent flat blocks
+                                    • No nesting needed
+                                    • Sub parts are just for organizing related code
+                                    
+                                    Rules:
+                                    • PART markers must start at column 0
+                                    • Each part is a complete, independent block
+                                    • No shared braces or scopes between parts
+                                    • Replace only affects the parts you specify
+                                    • Unspecified parts stay exactly as they are
+                                    
+                                    How to Replace:
+                                    1. Paste your code using 'Paste' button
+                                    2. Tap 'Replace' button
+                                    3. Paste replacement code with PART markers
+                                    4. Only the parts you include will be replaced
+                                """.trimIndent()
+                                
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("PARTS Guide", guideText))
+                                Toast.makeText(context, "Guide copied!", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Text(
+                                "Copy",
+                                color = Color(0xFF569CD6),
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    Divider(color = Color(0xFF444444))
                     
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text("▎What are PARTS?", color = Color(0xFF569CD6), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -465,11 +535,17 @@ fun AutoCPScreen() {
                         Text("1. Paste your code using 'Paste' button\n2. Tap 'Replace' button\n3. Paste replacement code with PART markers\n4. Only the parts you include will be replaced\n5. Other parts stay unchanged\n\nExample:\n//PART 1 START\nnew code for part 1\n//PART 1 END\n\n//PART 2.3 START\nupdated sub part\n//PART 2.3 END", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
                     }
                     
-                    TextButton(
-                        onClick = { showPartsGuide = false },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    Divider(color = Color(0xFF444444))
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Text("Got it", color = Color(0xFF4CAF50), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { showPartsGuide = false }) {
+                            Text("Got it", color = Color(0xFF4CAF50), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
                     }
                 }
             }
@@ -484,65 +560,100 @@ fun AutoCPScreen() {
         ) {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.7f),
-                shape = RoundedCornerShape(12.dp),
+                    .fillMaxWidth(0.95f)
+                    .fillMaxHeight(0.8f),
+                shape = RoundedCornerShape(16.dp),
                 color = Color(0xFF2D2D2D)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        "Replace Parts",
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    
-                    Text(
-                        "Paste replacement code with PART markers:",
-                        color      = Color(0xFFCCCCCC),
-                        fontSize   = 13.sp,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    OutlinedTextField(
-                        value         = replacementText,
-                        onValueChange = { replacementText = it },
-                        modifier      = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        textStyle = androidx.compose.ui.text.TextStyle(
-                            color      = Color.White,
+                    // Dialog header with Paste button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Replace Parts",
                             fontFamily = FontFamily.Monospace,
-                            fontSize   = 14.sp
-                        ),
-                        placeholder = {
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.White
+                        )
+                        
+                        TextButton(
+                            onClick = {
+                                pasteFromClipboard(context) { pastedText ->
+                                    replacementText = pastedText
+                                }
+                            }
+                        ) {
                             Text(
-                                "//PART 1 START\nreplacement codes...\n//PART 1 END\n\n//PART 2.3 START\nmore codes...\n//PART 2.3 END",
-                                color      = Color(0xFF666666),
+                                "Paste",
+                                color = Color(0xFF4CAF50),
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    Divider(color = Color(0xFF444444))
+                    
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            "Paste replacement code with PART markers:",
+                            color      = Color(0xFFCCCCCC),
+                            fontSize   = 13.sp,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value         = replacementText,
+                            onValueChange = { replacementText = it },
+                            modifier      = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                color      = Color.White,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize   = 14.sp
+                            ),
+                            placeholder = {
+                                Text(
+                                    "//PART 1 START\nreplacement codes...\n//PART 1 END\n\n//PART 2.3 START\nmore codes...\n//PART 2.3 END",
+                                    color      = Color(0xFF666666),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize   = 14.sp
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor   = Color(0xFF555555),
+                                unfocusedBorderColor = Color(0xFF444444),
+                                cursorColor          = Color.White
                             )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor   = Color(0xFF555555),
-                            unfocusedBorderColor = Color(0xFF444444),
-                            cursorColor          = Color.White
                         )
-                    )
+                    }
+                    
+                    Divider(color = Color(0xFF444444))
                     
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp),
+                            .padding(12.dp),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         TextButton(onClick = { showReplaceDialog = false }) {
-                            Text("Cancel", color = Color(0xFF888888), fontFamily = FontFamily.Monospace)
+                            Text("Cancel", color = Color(0xFF888888), fontFamily = FontFamily.Monospace, fontSize = 14.sp)
                         }
                         
                         Spacer(modifier = Modifier.width(8.dp))
@@ -554,14 +665,13 @@ fun AutoCPScreen() {
                                     val currentCode = et?.text?.toString() ?: ""
                                     val newCode     = replaceParts(currentCode, replacementText)
                                     et?.setText(newCode)
-                                    codeContent = newCode
                                     val partsReplaced = findParts(replacementText).size
                                     Toast.makeText(context, "Replaced $partsReplaced part(s)!", Toast.LENGTH_SHORT).show()
                                 }
                                 showReplaceDialog = false
                             }
                         ) {
-                            Text("Replace All", color = Color(0xFF4CAF50), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                            Text("Replace All", color = Color(0xFF4CAF50), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                 }
