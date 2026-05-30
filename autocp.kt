@@ -240,7 +240,9 @@ fun AutoCPScreen() {
     val editTextRef       = remember { mutableStateOf<EditText?>(null) }
     var showReplaceDialog by remember { mutableStateOf(false) }
     var showPartsGuide    by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     var replacementText   by remember { mutableStateOf("") }
+    var isAllSelected     by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -295,8 +297,12 @@ fun AutoCPScreen() {
                     
                     TextButton(
                         onClick = {
-                            editTextRef.value?.setText("")
-                            Toast.makeText(context, "Cleared!", Toast.LENGTH_SHORT).show()
+                            val et = editTextRef.value
+                            if (et != null && et.text.isNotEmpty()) {
+                                showDeleteConfirm = true
+                            } else {
+                                Toast.makeText(context, "Nothing to delete", Toast.LENGTH_SHORT).show()
+                            }
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.weight(1f)
@@ -312,12 +318,26 @@ fun AutoCPScreen() {
                     }
                     
                     TextButton(
-                        onClick = { editTextRef.value?.selectAll() },
+                        onClick = {
+                            editTextRef.value?.let { et ->
+                                if (isAllSelected) {
+                                    // Deselect all - move cursor to start
+                                    et.setSelection(0)
+                                    isAllSelected = false
+                                    Toast.makeText(context, "Deselected", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    // Select all
+                                    et.selectAll()
+                                    isAllSelected = true
+                                    Toast.makeText(context, "Selected all", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            "Select All",
+                            if (isAllSelected) "Deselect" else "Select All",
                             color = Color(0xFFCCCCCC),
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace,
@@ -335,9 +355,13 @@ fun AutoCPScreen() {
                                 } else {
                                     et.text.toString()
                                 }
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("code", textToCopy))
-                                Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                                if (textToCopy.isNotEmpty()) {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("code", textToCopy))
+                                    Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Nothing to copy", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
@@ -356,6 +380,7 @@ fun AutoCPScreen() {
                         onClick = {
                             pasteFromClipboard(context) { pastedText ->
                                 editTextRef.value?.setText(pastedText)
+                                isAllSelected = false
                             }
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
@@ -472,6 +497,57 @@ fun AutoCPScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+        )
+    }
+
+    // ── Delete Confirmation Dialog ────────────────────────────────────────
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            containerColor = Color(0xFF2D2D2D),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCCCCCC),
+            title = {
+                Text(
+                    "Delete All Code?",
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Text(
+                    "Are you sure you want to delete all code? This action cannot be undone.",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        editTextRef.value?.setText("")
+                        isAllSelected = false
+                        showDeleteConfirm = false
+                        Toast.makeText(context, "Deleted!", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text(
+                        "Delete",
+                        color = Color(0xFFFF6B6B),
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(
+                        "Cancel",
+                        color = Color(0xFF888888),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
         )
     }
 
