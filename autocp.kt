@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
 }
 
 // ─────────────────────────────────────────────
-// PARTS logic (unchanged)
+// PARTS logic - supports both // and # comment markers
 // ─────────────────────────────────────────────
 
 data class PartInfo(
@@ -68,8 +68,8 @@ data class PartInfo(
     val endIndex: Int
 )
 
-private val partStartRegex = Regex("""^//PART\s+(\d+(?:\.\d+)?)\s+START""", RegexOption.MULTILINE)
-private val partEndRegex   = Regex("""^//PART\s+\d+(?:\.\d+)?\s+END""",   RegexOption.MULTILINE)
+private val partStartRegex = Regex("""^[#/]{2}PART\s+(\d+(?:\.\d+)?)\s+START""", RegexOption.MULTILINE)
+private val partEndRegex   = Regex("""^[#/]{2}PART\s+\d+(?:\.\d+)?\s+END""",   RegexOption.MULTILINE)
 
 fun findParts(code: String): List<PartInfo> {
     val parts        = mutableListOf<PartInfo>()
@@ -80,7 +80,7 @@ fun findParts(code: String): List<PartInfo> {
         val partName = startMatch.groupValues[1]
         val endMatch = endMatches.find {
             it.range.first > startMatch.range.last &&
-            it.value.contains(Regex("""//PART\s+${Regex.escape(partName)}\s+END"""))
+            it.value.contains(Regex("""[#/]{2}PART\s+${Regex.escape(partName)}\s+END"""))
         }
         if (endMatch != null) {
             parts.add(PartInfo(
@@ -118,7 +118,7 @@ fun replaceParts(originalCode: String, replacementCode: String): String {
 }
 
 // ─────────────────────────────────────────────
-// Syntax highlighting
+// Syntax highlighting - supports both // and # comments
 // ─────────────────────────────────────────────
 
 private val COLOR_KEYWORD    = 0xFF569CD6.toInt()
@@ -140,7 +140,7 @@ private val KEYWORDS = setOf(
 private val keywordRegex      = Regex("\\b(${KEYWORDS.joinToString("|")})\\b")
 private val numberRegex       = Regex("\\b\\d+\\.?\\d*[fFdDlL]?\\b")
 private val annotationRegex   = Regex("@[A-Za-z]\\w*")
-private val lineCommentRegex  = Regex("//[^\n]*")
+private val lineCommentRegex  = Regex("(?://|#)[^\n]*")
 private val blockCommentRegex = Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL)
 private val stringRegex       = Regex("\"[^\"\n]*\"|'[^'\n]*'")
 
@@ -591,18 +591,18 @@ fun AutoCPScreen() {
                                     What are PARTS?
                                     PARTS let you organize your code into replaceable blocks. Each part is wrapped with START/END markers. All parts are flat and independent - no nesting.
                                     
-                                    Part Format:
+                                    Part Format (supports both // and # comments):
                                     //PART 0 START
                                     code here...
                                     //PART 0 END
                                     
-                                    //PART 1 START
+                                    #PART 1 START
                                     more code...
-                                    //PART 1 END
+                                    #PART 1 END
                                     
-                                    //PART 1.1 START
+                                    #PART 1.1 START
                                     sub part...
-                                    //PART 1.1 END
+                                    #PART 1.1 END
                                     
                                     Part Numbers:
                                     • Main parts: 0, 1, 2, 3 ... up to 99
@@ -617,6 +617,7 @@ fun AutoCPScreen() {
                                     • No shared braces or scopes between parts
                                     • Replace only affects the parts you specify
                                     • Unspecified parts stay exactly as they are
+                                    • Both // and # comment styles are supported
                                     
                                     How to Replace:
                                     1. Paste your code using 'Paste' button
@@ -650,19 +651,19 @@ fun AutoCPScreen() {
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text("▎What are PARTS?", color = Color(0xFF569CD6), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("PARTS let you organize your code into replaceable blocks. Each part is wrapped with START/END markers. All parts are flat and independent - no nesting.", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
+                        Text("PARTS let you organize your code into replaceable blocks. Each part is wrapped with START/END markers. All parts are flat and independent - no nesting. Supports both // and # comment styles.", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
 
                         Text("▎Part Format", color = Color(0xFF569CD6), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("//PART 0 START\ncode here...\n//PART 0 END\n\n//PART 1 START\nmore code...\n//PART 1 END\n\n//PART 1.1 START\nsub part...\n//PART 1.1 END\n\n//PART 1.2 START\nanother sub...\n//PART 1.2 END\n\n//PART 2 START\neven more...\n//PART 2 END", color = Color(0xFF6A9955), fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 16.sp)
+                        Text("//PART 0 START\ncode here...\n//PART 0 END\n\n#PART 1 START\nmore code...\n#PART 1 END\n\n#PART 1.1 START\nsub part...\n#PART 1.1 END\n\n//PART 1.2 START\nanother sub...\n//PART 1.2 END\n\n#PART 2 START\neven more...\n#PART 2 END", color = Color(0xFF6A9955), fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 16.sp)
 
                         Text("▎Part Numbers", color = Color(0xFF569CD6), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text("• Main parts: 0, 1, 2, 3 ... up to 99\n• Sub parts: 1.1, 1.2, 5.1, 5.2 ... (group.sub)\n• All parts are independent flat blocks\n• No nesting needed - each part is self-contained\n• Sub parts are just for organizing related code\n• Dot notation is purely for grouping (1.1 means group 1, sub 1)", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
 
                         Text("▎Rules", color = Color(0xFF569CD6), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("• PART markers must start at column 0 (no indentation)\n• Each part is a complete, independent block\n• No shared braces or scopes between parts\n• Replace only affects the parts you specify\n• Unspecified parts stay exactly as they are\n• Parts don't need to be in order", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
+                        Text("• PART markers must start at column 0 (no indentation)\n• Each part is a complete, independent block\n• No shared braces or scopes between parts\n• Replace only affects the parts you specify\n• Unspecified parts stay exactly as they are\n• Parts don't need to be in order\n• Both // and # comment styles are supported\n• You can mix // and # freely in the same code", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
 
                         Text("▎How to Replace", color = Color(0xFF569CD6), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("1. Paste your code using 'Paste' button\n2. Tap 'Replace' button\n3. Paste replacement code with PART markers\n4. Only the parts you include will be replaced\n5. Other parts stay unchanged\n\nExample:\n//PART 1 START\nnew code for part 1\n//PART 1 END\n\n//PART 2.3 START\nupdated sub part\n//PART 2.3 END", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
+                        Text("1. Paste your code using 'Paste' button\n2. Tap 'Replace' button\n3. Paste replacement code with PART markers\n4. Only the parts you include will be replaced\n5. Other parts stay unchanged\n\nExample:\n#PART 1 START\nnew code for part 1\n#PART 1 END\n\n//PART 2.3 START\nupdated sub part\n//PART 2.3 END", color = Color(0xFFCCCCCC), fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp)
                     }
                     
                     Divider(color = Color(0xFF444444))
@@ -739,7 +740,7 @@ fun AutoCPScreen() {
                             .padding(16.dp)
                     ) {
                         Text(
-                            "Paste replacement code with PART markers:",
+                            "Paste replacement code with PART markers (supports // and #):",
                             color      = Color(0xFFCCCCCC),
                             fontSize   = 13.sp,
                             fontFamily = FontFamily.Monospace,
@@ -759,7 +760,7 @@ fun AutoCPScreen() {
                             ),
                             placeholder = {
                                 Text(
-                                    "//PART 1 START\nreplacement codes...\n//PART 1 END\n\n//PART 2.3 START\nmore codes...\n//PART 2.3 END",
+                                    "#PART 1 START\nreplacement codes...\n#PART 1 END\n\n//PART 2.3 START\nmore codes...\n//PART 2.3 END",
                                     color      = Color(0xFF666666),
                                     fontFamily = FontFamily.Monospace,
                                     fontSize   = 14.sp
